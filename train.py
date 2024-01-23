@@ -18,7 +18,6 @@ from utils.dataset import Batcher
 from utils.utils import get_input_from_batch
 from utils.utils import get_output_from_batch
 from utils.utils import calc_running_avg_loss
-
 use_cuda = config.use_gpu and torch.cuda.is_available()
 
 
@@ -28,7 +27,10 @@ class Train(object):
         self.batcher = Batcher(self.vocab, config.train_data_path,
                                config.batch_size, single_pass=False, mode='train')
         time.sleep(10)
-
+        
+        if not os.path.exists(config.log_root):
+            os.mkdir(config.log_root)
+            
         train_dir = os.path.join(config.log_root, 'train_%d' % (int(time.time())))
         if not os.path.exists(train_dir):
             os.mkdir(train_dir)
@@ -53,6 +55,8 @@ class Train(object):
 
     def setup_train(self, model_path=None):
         self.model = Model(model_path, is_tran= config.tran)
+        print(self.model.encoder)
+        print(self.model.decoder)
         initial_lr = config.lr_coverage if config.is_coverage else config.lr
 
         params = list(self.model.encoder.parameters()) + list(self.model.decoder.parameters()) + \
