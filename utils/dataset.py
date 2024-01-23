@@ -175,14 +175,25 @@ class Batch(object):
         self.enc_batch = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.int32)
         self.enc_lens = np.zeros((self.batch_size), dtype=np.int32)
         self.enc_padding_mask = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.float32)
-
+        
+        
+                
         # Fill in the numpy arrays
         for i, ex in enumerate(example_list):
             self.enc_batch[i, :] = ex.enc_inp[:]
             self.enc_lens[i] = ex.enc_len
             for j in range(ex.enc_len):
                 self.enc_padding_mask[i][j] = 1
-
+        
+        self.max_enc_len = np.max(self.enc_lens)
+        self.enc_pos = np.zeros((self.batch_size, self.max_enc_len))
+        for i, inst in enumerate(self.enc_batch):
+            for j, w_i in enumerate(inst):
+                if w_i != config.PAD:
+                    self.enc_pos[i, j] = (j + 1)
+                else:
+                    break
+        
         # For pointer-generator mode, need to store some extra info
         if config.pointer_gen:
             # Determine the max number of in-article OOVs in this batch
@@ -220,7 +231,7 @@ class Batch(object):
 
 
 class Batcher(object):
-    BATCH_QUEUE_MAX = 100  # max number of batches the batch_queue can hold
+    BATCH_QUEUE_MAX = config.batch_queue_max  # max number of batches the batch_queue can hold
 
     def __init__(self, vocab, data_path, batch_size, single_pass, mode):
         self._vocab = vocab
