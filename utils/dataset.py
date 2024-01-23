@@ -14,6 +14,9 @@ from tensorflow.core.example import example_pb2
 from utils import utils
 from utils import config
 import logging
+import torch
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 logger = tf.get_logger()
 logger.setLevel(logging.INFO)
 
@@ -172,25 +175,23 @@ class Batch(object):
 
         # Initialize the numpy arrays
         # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
-        self.enc_batch = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.int32)
-        self.enc_lens = np.zeros((self.batch_size), dtype=np.int32)
-        self.enc_padding_mask = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.float32)
+        self.enc_batch = torch.zeros((self.batch_size, max_enc_seq_len), dtype=torch.long, device=device)
+        self.enc_lens = torch.zeros((self.batch_size), dtype=torch.long, device=device)
+        self.enc_padding_mask = torch.zeros((self.batch_size, max_enc_seq_len), dtype=torch.float32, device=device)
         
-        
-                
         # Fill in the numpy arrays
         for i, ex in enumerate(example_list):
-            self.enc_batch[i, :] = ex.enc_inp[:]
-            self.enc_lens[i] = ex.enc_len
+            self.enc_batch[i, :] = torch.tensor(ex.enc_inp[:], device=device)
+            self.enc_lens[i] = torch.tensor(ex.enc_len, device=device)
             for j in range(ex.enc_len):
-                self.enc_padding_mask[i][j] = 1
+                self.enc_padding_mask[i][j] = torch.tensor(1, device=device)
         
-        self.max_enc_len = np.max(self.enc_lens)
-        self.enc_pos = np.zeros((self.batch_size, self.max_enc_len))
+        self.max_enc_len = torch.max(self.enc_lens)
+        self.enc_pos = torch.zeros((self.batch_size, self.max_enc_len), device=device)
         for i, inst in enumerate(self.enc_batch):
             for j, w_i in enumerate(inst):
                 if w_i != config.PAD:
-                    self.enc_pos[i, j] = (j + 1)
+                    self.enc_pos[i, j] = torch.tensor(j + 1, device=device)
                 else:
                     break
         
@@ -198,31 +199,44 @@ class Batch(object):
         if config.pointer_gen:
             # Determine the max number of in-article OOVs in this batch
             self.max_art_oovs = max([len(ex.article_oovs) for ex in example_list])
+            self.extra_zeros = None
+            if self.max_art_oovs > 0:
+                self.extra_zeros = torch.zeros((self.batch_size, self.max_art_oovs), device=device)
             # Store the in-article OOVs themselves
             self.art_oovs = [ex.article_oovs for ex in example_list]
             # Store the version of the enc_batch that uses the article OOV ids
-            self.enc_batch_extend_vocab = np.zeros((self.batch_size, max_enc_seq_len), dtype=np.int32)
+            self.enc_batch_extend_vocab = torch.zeros((self.batch_size, max_enc_seq_len), dtype=torch.long)
             for i, ex in enumerate(example_list):
-                self.enc_batch_extend_vocab[i, :] = ex.enc_inp_extend_vocab[:]
-
+                self.enc_batch_extend_vocab[i, :] = torch.tensor(ex.enc_inp_extend_vocab[:], device=device)
+        
     def init_decoder_seq(self, example_list):
         # Pad the inputs and targets
         for ex in example_list:
             ex.pad_dec_seq(config.max_dec_steps, self.pad_id)
-
+        
         # Initialize the numpy arrays.
-        self.dec_batch = np.zeros((self.batch_size, config.max_dec_steps), dtype=np.int32)
-        self.tgt_batch = np.zeros((self.batch_size, config.max_dec_steps), dtype=np.int32)
-        self.dec_padding_mask = np.zeros((self.batch_size, config.max_dec_steps), dtype=np.float32)
-        self.dec_lens = np.zeros((self.batch_size), dtype=np.int32)
-
+        self.dec_batch = torch.zeros((self.batch_size, config.max_dec_steps), dtype=torch.long, device=device)
+        self.tgt_batch = torch.zeros((self.batch_size, config.max_dec_steps), dtype=torch.long, device=device)
+        self.dec_padding_mask = torch.zeros((self.batch_size, config.max_dec_steps), dtype=torch.float32, device=device)
+        self.dec_lens = torch.zeros((self.batch_size), dtype=torch.long, device=device)
+        
         # Fill in the numpy arrays
         for i, ex in enumerate(example_list):
-            self.dec_batch[i, :] = ex.dec_inp[:]
-            self.tgt_batch[i, :] = ex.tgt[:]
-            self.dec_lens[i] = ex.dec_len
+            self.dec_batch[i, :] = torch.tensor(ex.dec_inp[:], device=device)
+            self.tgt_batch[i, :] = torch.tensor(ex.tgt[:], device=device)
+            self.dec_lens[i] = torch.tensor(ex.dec_len, device=device)
             for j in range(ex.dec_len):
-                self.dec_padding_mask[i][j] = 1
+                self.dec_padding_mask[i][j] = torch.tensor(1, device=device)
+                
+        self.max_dec_len = torch.max(self.dec_lens)
+        # dec pos
+        self.dec_pos = torch.zeros((self.batch_size, config.max_dec_steps), dtype=torch.long, device=device)
+        for i, inst in enumerate(self.dec_batch):
+            for j, w_i in enumerate(inst):
+                if w_i != config.PAD:
+                    self.dec_pos[i, j] = torch.tensor(j + 1, device=device)
+                else:
+                    break
 
     def store_orig_strings(self, example_list):
         self.original_articles = [ex.original_article for ex in example_list]  # list of lists

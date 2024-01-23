@@ -204,18 +204,17 @@ def write_for_rouge(reference_sents, decoded_words, ex_index,
 def get_input_from_batch(batch, use_cuda):
     extra_zeros = None
     enc_lens = batch.enc_lens
-    max_enc_len = batch.max_enc_len
     enc_batch_extend_vocab = None
     batch_size = len(batch.enc_lens)
     device = 'cuda' if use_cuda else 'cpu'
-    enc_batch = Variable(torch.tensor(batch.enc_batch, device=device, dtype=torch.long))
-    enc_padding_mask = Variable(torch.tensor(batch.enc_padding_mask, device=device, dtype=torch.float32))
+    enc_batch = Variable(batch.enc_batch)
+    enc_padding_mask = Variable(batch.enc_padding_mask)
 
     if config.pointer_gen:
-        enc_batch_extend_vocab = Variable(torch.tensor(batch.enc_batch_extend_vocab, device=device, dtype=torch.long))
+        enc_batch_extend_vocab = Variable(batch.enc_batch_extend_vocab)
         # max_art_oovs is the max over all the article oov list in the batch
         if batch.max_art_oovs > 0:
-            extra_zeros = Variable(torch.zeros((batch_size, batch.max_art_oovs), device=device))
+            extra_zeros = Variable(batch.extra_zeros)
 
     c_t = Variable(torch.zeros((batch_size, 2 * config.hidden_dim), device=device))
 
@@ -231,44 +230,46 @@ def get_input_from_batch(batch, use_cuda):
     #         else:
     #             break
             
-    enc_pos = Variable(torch.tensor(batch.enc_pos, dtype=torch.long, device=device))
+    enc_pos = Variable(batch.enc_pos)
 
-    # if use_cuda:
-    #     c_t = c_t.cuda()
-    #     enc_pos = enc_pos.cuda()
-    #     enc_batch = enc_batch.cuda()
-    #     enc_padding_mask = enc_padding_mask.cuda()
+    if use_cuda:
+        c_t = c_t.cuda()
+        enc_pos = enc_pos.cuda()
+        enc_batch = enc_batch.cuda()
+        enc_padding_mask = enc_padding_mask.cuda()
 
-    #     if coverage is not None:
-    #         coverage = coverage.cuda()
+        if coverage is not None:
+            coverage = coverage.cuda()
 
-    #     if extra_zeros is not None:
-    #         extra_zeros = extra_zeros.cuda()
+        if extra_zeros is not None:
+            extra_zeros = extra_zeros.cuda()
 
-    #     if enc_batch_extend_vocab is not None:
-    #         enc_batch_extend_vocab = enc_batch_extend_vocab.cuda()
+        if enc_batch_extend_vocab is not None:
+            enc_batch_extend_vocab = enc_batch_extend_vocab.cuda()
 
 
     return enc_batch, enc_lens, enc_pos, enc_padding_mask, enc_batch_extend_vocab, extra_zeros, c_t, coverage
 
 
 def get_output_from_batch(batch, use_cuda):
-    dec_lens = batch.dec_lens
-    max_dec_len = np.max(dec_lens)
-    batch_size = len(batch.dec_lens)
-    dec_lens = Variable(torch.from_numpy(dec_lens)).float()
-    tgt_batch = Variable(torch.from_numpy(batch.tgt_batch)).long()
-    dec_batch = Variable(torch.from_numpy(batch.dec_batch).long())
-    dec_padding_mask = Variable(torch.from_numpy(batch.dec_padding_mask)).float()
+    max_dec_len = batch.max_dec_len
+    # batch_size = len(batch.dec_lens)
+    
+    device = 'cuda' if use_cuda else 'cpu'
+    
+    dec_lens = Variable(batch.dec_lens)
+    tgt_batch = Variable(batch.tgt_batch)
+    dec_batch = Variable(batch.dec_batch)
+    dec_padding_mask = Variable(batch.dec_padding_mask)
 
-    dec_pos = np.zeros((batch_size, config.max_dec_steps))
-    for i, inst in enumerate(batch.dec_batch):
-        for j, w_i in enumerate(inst):
-            if w_i != config.PAD:
-                dec_pos[i, j] = (j + 1)
-            else:
-                break
-    dec_pos = Variable(torch.from_numpy(dec_pos).long())
+    # dec_pos = np.zeros((batch_size, config.max_dec_steps))
+    # for i, inst in enumerate(batch.dec_batch):
+    #     for j, w_i in enumerate(inst):
+    #         if w_i != config.PAD:
+    #             dec_pos[i, j] = (j + 1)
+    #         else:
+    #             break
+    dec_pos = Variable(batch.dec_pos)
 
     if use_cuda:
         dec_lens = dec_lens.cuda()
