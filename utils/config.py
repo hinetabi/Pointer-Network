@@ -17,8 +17,8 @@ EOS_TOKEN = '[EOS]'
 
 beam_size=4
 emb_dim= 512
-batch_size= 1
-batch_queue_max= 500000 // batch_size + 1
+batch_size= 64
+batch_queue_max= 2000
 hidden_dim= 1024
 max_enc_steps=400
 max_dec_steps=100
@@ -54,8 +54,8 @@ n_warmup_steps = 4000
 
 root_dir = os.path.expanduser("./")
 log_root = os.path.join(root_dir, "dataset/log/")
-# save models when complete 500 iters
-save_model_every = 7800
+# save models when complete 5000 iters
+save_model_every = 5000
 
 #train_data_path = os.path.join(root_dir, "pointer_generator/dataset/finished_files/train.bin")
 train_data_path = os.path.join(root_dir, "dataset/finished_files/chunked/train_*")
