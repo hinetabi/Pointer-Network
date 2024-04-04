@@ -2,7 +2,7 @@ import sys
 import gradio as gr
 import logging
 import logging.config
-from pointer_generator.infer import correct
+from pointer_generator.infer import Generate
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +20,10 @@ def vote(data: gr.LikeData):
         return
 
 chatbot = gr.Chatbot(bubble_full_width = True)
+generate = Generate()
 
 demo = gr.Interface(
-    fn=correct,
+    fn=generate.generate_correct_sentence,
     title=title, 
     description=description,
     inputs=["text"],

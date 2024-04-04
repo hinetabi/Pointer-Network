@@ -45,6 +45,27 @@ def replace_oovs(source_in, target_in, target_out):
                 token_out = token
             target_seq_out.append(token_out)
         target_out.write(" ".join(target_seq_out) + "\n")
+        
+def replace_oov_sentence(source_sentence, target_sentence):
+    """Replaces <unk-N> tokens in the target sentence with the corresponding word in
+    the source sentence.
+    """
+
+    oov_re = re.compile("^<unk-([0-9]+)>$")
+
+    pos_to_word = source_sentence.strip().split()
+    target_seq_out = []
+    for token in target_sentence.strip().split():
+        m = oov_re.match(token)
+        if m:
+            pos = int(m.group(1))
+            if pos >= len(pos_to_word):
+                raise OOVIndexError(pos, source_sentence, target_sentence)
+            token_out = pos_to_word[pos]
+        else:
+            token_out = token
+        target_seq_out.append(token_out)
+    return " ".join(target_seq_out) + "\n"
 
 
 def main():

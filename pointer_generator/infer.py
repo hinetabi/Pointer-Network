@@ -1,52 +1,36 @@
 import requests
 import json
 import torch
-from pointer_generator.pointer_generator_src.transformer_pg import TransformerPointerGeneratorModel
+from fairseq.models.transformer import TransformerModel
+from pointer_generator.preprocess import add_oov_sentence, reformat_sentence
+from pointer_generator.postprocess import replace_oov_sentence
 
-def generate_correct_api(Error_Sentence: str):
-    url = "https://nlp.laban.vn/wiki/ajax_spelling_checker_check/"
+class Generate():
+    def __init__(self) -> None:
+        model_path = "checkpoints/checkpoint24.pt"
+        self.model = TransformerModel.from_pretrained(
+                ".", # path to the model directory
+                checkpoint_file=model_path,
+                data_name_or_path="bin",
+                is_gpu=True,
+                user_dir= "pointer_generator/pointer_generator_src"
+            )
+            
+        self.model.eval()
+        
 
-    payload = {
-        'text': Error_Sentence,
-        'app_type': 'web_demo'
-    }
-    
-    files=[]
-    headers = {}
 
-    response = requests.request("POST", url, headers=headers, data=payload, files=files)
-    response = json.loads(response.text)['result'][0]['suggested_text']
-    return response
-
-def generate_correct_sentence(sentence, batch_size, max_length, length_penalty, beam_size):
-    model_path = "checkpoint24.pt"
-    model = TransformerPointerGeneratorModel.from_pretrained(
-        "checkpoints/", # path to the model directory
-        checkpoint_file=model_path,
-        data_name_or_path="bin",
-        is_gpu=True,
-        user_dir= "pointer_generator/pointer_generator_src"
-    )
-    
-    model.eval()
-
-    # # Tokenize input sentence
-    # tokens = model.encode(sentence)
-
-    # # Generate output sequence
-    # generated_tokens = model.generate(
-    #     tokens, # Add batch dimension
-    #     beam=beam_size,
-    #     lenpen=length_penalty,
-    #     max_len_b=max_length
-    # )
-
-    # Decode generated tokens
-    generated_sentence = model.translate([sentence])
-
-    return generated_sentence
+    def generate_correct_sentence(self, sentence):
+        preprocess_sentence = add_oov_sentence(reformat_sentence(sentence), vocab_file="sample_data/dict.pg.txt")
+        generated_sentence = self.model.translate([preprocess_sentence], beam = 6)[0]
+        postprocess_sentence = replace_oov_sentence(reformat_sentence(sentence), generated_sentence)
+        
+        return postprocess_sentence
 
 if __name__ == '__main__':
-    sentence = "Cơn mưa ng ang qua mang em ddi xa ."
-    sent = generate_correct_sentence(sentence, batch_size=1, max_length=100, beam_size=6, length_penalty=1.0)
+    sentence = "Cơn mưa ng ang qua mang em ddi xa."
+    # sentence = "Công nghệ <unk-2> : <unk-4> động lớn đến các nền kinh tế mới nổi ."
+    # sentence = "Công nghệ Blockchain : Tasc động lớn đến các nền kinh tế mới nổi ."
+    generate = Generate()
+    sent = generate.generate_correct_sentence(sentence)
     print(sent)
