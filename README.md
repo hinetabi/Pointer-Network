@@ -86,8 +86,4 @@ actual words can be retrieved from the unprocessed input text. Any `<unk-N>`
 token should be replaced with the word at position N in the original input
 sequence. This can be achieved using the `postprocess.py` script.
 
-##### 5. Evaluation
-
-We can evaluation the model using A Real-world Dataset for Vietnamese Spell Correction. To see the detail of this section, please check this [file](README.training.md).
-
 

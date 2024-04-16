@@ -154,21 +154,3 @@ skip too long sequences now that we read `test.src`.
 
 Now you'll find the final sequences from `generate.hyp.processed`, with
 `<unk-N>` replaced with the original word from the source sequence.
-
-##### An example of a summarized sequence
-
-The original source src in `test.src`:
-
-> de roon moved to teesside in june 2016 for an initial # 8.8 m fee and played 33 premier league games last term . the netherlands international , 26 , scored five goals in 36 league and cup games during his spell at boro . meanwhile , manager garry monk confirmed the championship club 's interest in signing chelsea midfielder lewis baker . `` he 's a target and one of many that we 've had throughout the summer months , '' said monk . find all the latest football transfers on our dedicated page .
-
-The preprocessed source src in `test.src.pg`:
-
-> de \<unk-1> moved to \<unk-4> in june 2016 for an initial # \<unk-12> m fee and played 33 premier league games last term . the netherlands international , 26 , scored five goals in 36 league and cup games during his spell at boro . meanwhile , manager garry monk confirmed the championship club 's interest in signing chelsea midfielder lewis baker . `` he 's a target and one of many that we 've had throughout the summer months , '' said monk . find all the latest football transfers on our dedicated page .
-
-The generated tgt in `generate.hyp`:
-
-> middlesbrough striker \<unk> de \<unk-1> has joined spanish side \<unk> on a season-long loan .
-
-The generated tgt after postprocessing in `generate.hyp.processed`:
-
-> middlesbrough striker \<unk> de roon has joined spanish side \<unk> on a season-long loan .
